@@ -38,11 +38,12 @@ def indent(func):
 
 
 class Env:
-    __slots__ = ('namespace', '_maps', 'parent', 'child')
+    __slots__ = ('namespace', '_maps', 'parent', 'child', 'globals')
 
     def __init__(self, namespace=''):
         self.namespace = namespace
         self._maps = {}
+        self.globals = set()
         self.child = None
         self.parent = None
 
@@ -84,12 +85,19 @@ class Translator:
         mod_end = self._output_line("return M")
         return self._out_fmt(mod_begin, STDLIB, mod_body, mod_end)
 
+    def _translate_Global(self, tree, **kwargs):
+        env = kwargs.get('env', Env())
+        env.globals = set(tree.names)
+        return ''
+
     @indent
     def _translate_Assign(self, tree, **kwargs):
         non_local = kwargs.get('non_local', False)
-        targets = ','.join([t.id for t in tree.targets])
+        var_names = [t.id for t in tree.targets]
+        global_ = bool(set(var_names).intersection(kwargs.get('env', Env()).globals))
+        targets = ','.join(var_names)
         values = ','.join([self.visit(tree.value, **kwargs) for _ in tree.targets])
-        return self._out_fmt('local ' if not non_local else '', targets, '=', values)
+        return self._out_fmt('local ' if not non_local and not global_ else '', targets, '=', values)
 
     @indent
     def _translate_Return(self, tree, **kwargs):
