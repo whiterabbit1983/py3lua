@@ -202,7 +202,7 @@ class Translator:
         real_name = tree.name
         func_namespace = env.namespace
         for dec in tree.decorator_list:
-            if isinstance(dec.func, ast.Name) and dec.func.id == 'namespace':
+            if isinstance(dec.func, ast.Name) and dec.func.id == 'ns':
                 func_namespace = dec.args[0].s
                 break
         if func_namespace:
