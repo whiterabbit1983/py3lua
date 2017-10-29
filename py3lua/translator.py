@@ -319,12 +319,12 @@ class Translator:
 
     @indent
     def _translate_Import(self, tree, **kwargs):
-        return self._output_line('\n'.join([self.visit(n, **kwargs) for n in tree.names]))
+        return '\n'.join([self.visit(n, **kwargs) for n in tree.names])
 
     @indent
     def _translate_ImportFrom(self, tree, **kwargs):
         kwargs['from_mod'] = tree.module
-        return self._output_line('\n'.join([self.visit(n, **kwargs) for n in tree.names]))
+        return '\n'.join([self.visit(n, **kwargs) for n in tree.names])
 
     @indent
     def _translate_List(self, tree, **kwargs):
