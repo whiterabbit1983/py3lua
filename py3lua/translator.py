@@ -4,6 +4,8 @@ from functools import reduce
 
 
 STDLIB = """
+-- standard library code
+
 local function _add_op(a, b)
     if type(a) == "string" then
         return a .. b
@@ -20,7 +22,7 @@ function list(...)
     end
 
     function lst.iter()
-        i = -1
+        i = 0
         return function()
             i = i + 1
             local v = lst[i]
@@ -31,27 +33,30 @@ function list(...)
     end
 
     for i, v in ipairs({...}) do
-        lst[i - 1] = v
+        lst[i] = v
     end
 
     return lst
 end
-
 
 function range(...)
     local lst = list()
     args = {...}
     if #args == 1 then
         start = 0
-        end_ = args[1]
+        end_ = args[1] - 1
         step = 1
     elseif #args == 2 then
         start = args[1]
-        end_ = args[2]
-        step = 1
+        end_ = args[2] - 1
+        if start > end_ then
+          step = -1
+        else
+          step = 1
+        end
     else
         start = args[1]
-        end_ = args[2]
+        end_ = args[2] - 1
         step = args[3]
     end
 
@@ -61,6 +66,8 @@ function range(...)
 
     return lst
 end
+
+-- generated code
 
 """
 TAB_SPACES = 4
