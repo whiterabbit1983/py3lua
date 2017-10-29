@@ -128,7 +128,7 @@ class Translator:
             body = []
         mod_body = self._output_line(
             reduce(
-                lambda a, v: a + self.visit(v, module_prefix="M", env=env), 
+                lambda a, v: a + self._output_line(self.visit(v, module_prefix="M", env=env)),
                 body, ""
             )
         )
@@ -227,7 +227,7 @@ class Translator:
                 cur_env = cur_env.parent
                 real_name = cur_env.get(tree.func.id)
 
-            return self._output_line((tree.func.id if real_name is None else real_name) + arg_list)
+            return (tree.func.id if real_name is None else real_name) + arg_list
         else:
             return self.visit(tree.func, **kwargs) + arg_list
 
