@@ -12,6 +12,56 @@ local function _add_op(a, b)
     end
 end
 
+function list(...)
+    local lst = {}
+  
+    function lst.append(elt)
+        table.insert(lst, elt)
+    end
+
+    function lst.iter()
+        i = -1
+        return function()
+            i = i + 1
+            local v = lst[i]
+            if v then
+                return v
+            end
+        end, lst, 0
+    end
+
+    for i, v in ipairs({...}) do
+        lst[i - 1] = v
+    end
+
+    return lst
+end
+
+
+function range(...)
+    local lst = list()
+    args = {...}
+    if #args == 1 then
+        start = 0
+        end_ = args[1]
+        step = 1
+    elseif #args == 2 then
+        start = args[1]
+        end_ = args[2]
+        step = 1
+    else
+        start = args[1]
+        end_ = args[2]
+        step = args[3]
+    end
+
+    for i=start, end_, step do
+        lst.append(i)
+    end
+
+    return lst
+end
+
 """
 TAB_SPACES = 4
 
@@ -177,7 +227,7 @@ class Translator:
                 cur_env = cur_env.parent
                 real_name = cur_env.get(tree.func.id)
 
-            return (tree.func.id if real_name is None else real_name) + arg_list
+            return self._output_line((tree.func.id if real_name is None else real_name) + arg_list)
         else:
             return self.visit(tree.func, **kwargs) + arg_list
 
@@ -266,6 +316,57 @@ class Translator:
     @indent
     def _translate_Attribute(self, tree, **kwargs):
         return '(' + self.visit(tree.value, **kwargs) + '.' + tree.attr + ')'
+
+    @indent
+    def _translate_Import(self, tree, **kwargs):
+        return self._output_line('\n'.join([self.visit(n, **kwargs) for n in tree.names]))
+
+    @indent
+    def _translate_ImportFrom(self, tree, **kwargs):
+        kwargs['from_mod'] = tree.module
+        return self._output_line('\n'.join([self.visit(n, **kwargs) for n in tree.names]))
+
+    @indent
+    def _translate_List(self, tree, **kwargs):
+        elts = ','.join([self.visit(elt, **kwargs) for elt in tree.elts])
+        return 'list(' + elts + ')'
+    
+    @indent
+    def _translate_Dict(self, tree, **kwargs):
+        items = ','.join([
+            self.visit(k, **kwargs) + ':' + self.visit(v, **kwargs) 
+            for k, v in zip(tree.keys, tree.values)
+        ])
+        return '{' + items + '}'
+
+    @indent
+    def _translate_Subscript(self, tree, **kwargs):
+        return self.visit(tree.value, **kwargs) + '[' + self.visit(tree.slice, **kwargs) + ']'
+    
+    @indent
+    def _translate_Index(self, tree, **kwargs):
+        return self.visit(tree.value, **kwargs)
+
+    @indent
+    def _translate_alias(self, tree, **kwargs):
+        from_mod = kwargs.get('from_mod', None)
+        asname = tree.asname if tree.asname is not None else tree.name
+        if from_mod:
+            return asname + '=require("' + from_mod + '").' + tree.name
+        else:
+            return asname + '=require("' + tree.name + '")'
+
+    def _translate_For(self, tree, **kwargs):
+        indent_level = kwargs.get('indent_level', 0)
+        indent = ' ' * indent_level * TAB_SPACES
+        kwargs['indent_level'] = indent_level + 1
+        for_body = reduce(lambda a, v: a + (self.visit(v, **kwargs) + '\n'), tree.body, "")
+        kwargs['indent_level'] = 0
+        target = self.visit(tree.target, **kwargs)
+        iter_ = self.visit(tree.iter, **kwargs)
+        for_begin = indent + 'for ' + target + ' in (' + iter_ + ').iter() do\n'
+        for_end = indent + 'end\n'
+        return self._out_fmt(for_begin, for_body, for_end)
 
     def visit(self, tree, **kwargs):
         parse_meth = getattr(self, '_translate_{}'.format(tree.__class__.__name__))

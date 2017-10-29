@@ -1,6 +1,6 @@
 import ast
 import unittest
-from translator import Translator, STDLIB
+from py3lua.translator import Translator, STDLIB
 
 
 class TestTranslator(unittest.TestCase):
@@ -124,6 +124,45 @@ class TestTranslator(unittest.TestCase):
         self.assertEqual(res1, '((z>12) or (z<=15))')
         self.assertEqual(res2, '((z>12) and (z<=15))')
         self.assertEqual(res3, '((z>12) and (z<=15) and (y<=25))')
+
+    def test_translate_Import(self):
+        ast1 = ast.Import(names=[ast.alias(name='os', asname='_os')])
+        ast2 = ast.Import(names=[ast.alias(name='os', asname=None)])
+        ast3 = ast.Import(names=[ast.alias(name='os', asname=None), ast.alias(name='sys', asname=None)])
+        res1 = self.translator._translate_Import(ast1)
+        res2 = self.translator._translate_Import(ast2)
+        res3 = self.translator._translate_Import(ast3)
+        self.assertEqual(res1, '_os=require("os")')
+        self.assertEqual(res2, 'os=require("os")')
+        self.assertEqual(res3, 'os=require("os")\nsys=require("sys")')
+
+    def test_translate_ImportFrom(self):
+        ast1 = ast.ImportFrom(module='os', names=[ast.alias(name='path', asname=None)], level=0)
+        ast2 = ast.ImportFrom(module='os', names=[ast.alias(name='path', asname='path1')], level=0)
+        ast3 = ast.ImportFrom(module='os', names=[ast.alias(name='path', asname=None), ast.alias(name='dirname', asname=None)], level=0)
+        res1 = self.translator._translate_ImportFrom(ast1)
+        res2 = self.translator._translate_ImportFrom(ast2)
+        res3 = self.translator._translate_ImportFrom(ast3)
+        self.assertEqual(res1, 'path=require("os").path')
+        self.assertEqual(res2, 'path1=require("os").path')
+        self.assertEqual(res3, 'path=require("os").path\ndirname=require("os").dirname')
+    
+    def test_translate_List(self):
+        ast1 = ast.List(elts=[ast.Num(n=1), ast.Num(n=2)], ctx=ast.Load())
+        res1 = self.translator._translate_List(ast1)
+        self.assertEqual(res1, 'list(1,2)')
+    
+    def test_translate_Dict(self):
+        ast1 = ast.Dict(keys=[ast.Str(s='a')], values=[ast.Num(n=1)])
+        res1 = self.translator._translate_Dict(ast1)
+        self.assertEqual(res1, '{"a":1}')
+    
+    def test_translate_Subscript(self):
+        ast1 = ast.Subscript(
+            value=ast.Name(id='s', ctx=ast.Load()), 
+            slice=ast.Index(value=ast.Num(n=1)), ctx=ast.Load())
+        res1 = self.translator._translate_Subscript(ast1)
+        self.assertEqual(res1, 's[1]')
 
 
 suite = unittest.TestLoader().loadTestsFromTestCase(TestTranslator)
