@@ -117,7 +117,7 @@ class Env:
 
 class Translator:
     """
-    Main translator class.
+    Main translator class
     """
     def __init__(self, out_file=None):
         self._out = out_file
